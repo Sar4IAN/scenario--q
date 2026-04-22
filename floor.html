@@ -2,116 +2,288 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>店舗レイアウトエディター</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Concept Editor</title>
     <style>
-        body { font-family: sans-serif; display: flex; margin: 0; background: #f0f0f0; }
-        /* サイドバー（編集パネル） */
-        #toolbar { width: 300px; padding: 20px; background: #fff; border-right: 1px solid #ccc; height: 100vh; }
-        /* キャンバス（店の床） */
-        #canvas { position: relative; flex-grow: 1; height: 100vh; overflow: auto; padding: 50px; }
-        .shop-floor { 
-            background: #fff; border: 2px solid #333; position: relative; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: 0.2s;
+        /* --- 1. あなたの既存のレイアウト（ベース） --- */
+        :root {
+            --bg-color: #121212;
+            --accent: #007aff;
+            --panel-bg: rgba(25, 25, 25, 0.95);
         }
-        /* 編集可能なオブジェクト共通設定 */
-        .object { 
-            position: absolute; border: 2px solid #444; 
-            display: flex; align-items: center; justify-content: center;
-            cursor: move; background: rgba(100, 150, 250, 0.5); font-size: 12px;
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
         }
-        .object.selected { outline: 3px solid #ff4757; background: rgba(255, 71, 87, 0.3); }
-        .window { background: rgba(135, 206, 235, 0.7); border: 2px solid #fff; }
+
+        /* プレビューエリア（店が配置される場所） */
+        #viewport {
+            flex-grow: 1;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            perspective: 1200px;
+        }
+
+        /* --- 2. 編集機能用のスタイル（ここから重要） --- */
         
-        .control-group { margin-bottom: 15px; }
-        label { display: block; font-size: 13px; margin-bottom: 5px; }
-        input[type="range"] { width: 100%; }
+        /* 編集対象になる要素の共通ルール */
+        .editable {
+            cursor: move;
+            transition: outline 0.1s, box-shadow 0.1s;
+            user-select: none;
+        }
+
+        /* マウスを乗せた時 */
+        .editable:hover {
+            outline: 2px dashed rgba(255, 255, 255, 0.4);
+        }
+
+        /* 選択中 */
+        .selected-target {
+            outline: 2px solid var(--accent) !important;
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.4);
+            z-index: 9999 !important;
+        }
+
+        /* 右側の編集パネル */
+        #inspector-panel {
+            width: 300px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid #333;
+            padding: 24px;
+            box-sizing: border-box;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            z-index: 10000;
+        }
+
+        .panel-title {
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            color: #888;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #bbb;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            appearance: none;
+            outline: none;
+            accent-color: var(--accent);
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 35px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .target-info {
+            background: #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        button.delete-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3a1a1a;
+            color: #ff4757;
+            border: 1px solid #5a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        button.delete-btn:hover {
+            background: #ff4757;
+            color: white;
+        }
     </style>
 </head>
 <body>
 
-<div id="toolbar">
-    <h3>編集パネル</h3>
-    <p id="target-name">オブジェクトを選択してください</p>
-    <hr>
-    <div class="control-group">
-        <label>幅 (Width)</label>
-        <input type="range" id="width-slider" min="10" max="800">
+    <div id="viewport">
+        <div id="main-shop" class="editable" style="width: 500px; height: 350px; background: #ffffff; position: relative;">
+            <div id="window-1" class="editable" style="width: 120px; height: 10px; background: #add8e6; position: absolute; top: 0; left: 50px;"></div>
+            <div id="desk-1" class="editable" style="width: 80px; height: 60px; background: #deb887; position: absolute; top: 100px; left: 100px;"></div>
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 45%;">Shop Canvas</p>
+        </div>
     </div>
-    <div class="control-group">
-        <label>高さ (Height)</label>
-        <input type="range" id="height-slider" min="10" max="800">
-    </div>
-    <div class="control-group">
-        <label>回転 (Rotation)</label>
-        <input type="range" id="rotate-slider" min="0" max="360" value="0">
-    </div>
-    <hr>
-    <button onclick="addObject('table')">机を追加</button>
-    <button onclick="addObject('window')">窓を追加</button>
-</div>
 
-<div id="canvas">
-    <div id="shop" class="shop-floor object" style="width: 500px; height: 400px; top: 50px; left: 50px;">
-        店のエリア (Shop)
-    </div>
-</div>
-
-<script>
-let selectedElement = null;
-
-// 要素を選択する処理
-document.addEventListener('mousedown', (e) => {
-    if (e.target.classList.contains('object')) {
-        if (selectedElement) selectedElement.classList.remove('selected');
-        selectedElement = e.target;
-        selectedElement.classList.add('selected');
+    <aside id="inspector-panel">
+        <div class="panel-title">Property Inspector</div>
         
-        document.getElementById('target-name').innerText = "編集中: " + selectedElement.innerText.split('\n')[0];
-        
-        // 現在の値をスライダーに反映
-        document.getElementById('width-slider').value = parseInt(selectedElement.style.width);
-        document.getElementById('height-slider').value = parseInt(selectedElement.style.height);
-        const transform = selectedElement.style.transform;
-        const match = transform.match(/rotate\((\d+)deg\)/);
-        document.getElementById('rotate-slider').value = match ? match[1] : 0;
-    }
-});
+        <div class="target-info" id="display-name">Select an object</div>
 
-// スライダーで編集する処理
-document.getElementById('width-slider').oninput = function() {
-    if (selectedElement) selectedElement.style.width = this.value + 'px';
-};
-document.getElementById('height-slider').oninput = function() {
-    if (selectedElement) selectedElement.style.height = this.value + 'px';
-};
-document.getElementById('rotate-slider').oninput = function() {
-    if (selectedElement) selectedElement.style.transform = `rotate(${this.value}deg)`;
-};
+        <div class="control-group">
+            <label>幅 (Width)</label>
+            <input type="range" id="field-w" min="0" max="1000">
+        </div>
 
-// オブジェクトの追加
-function addObject(type) {
-    const newObj = document.createElement('div');
-    newObj.className = `object ${type === 'window' ? 'window' : ''}`;
-    newObj.style.width = '80px';
-    newObj.style.height = '50px';
-    newObj.style.top = '20px';
-    newObj.style.left = '20px';
-    newObj.innerText = type === 'window' ? '窓' : '机';
-    document.getElementById('shop').appendChild(newObj);
-}
+        <div class="control-group">
+            <label>高さ (Height)</label>
+            <input type="range" id="field-h" min="0" max="1000">
+        </div>
 
-// 簡易ドラッグ処理
-let isDragging = false;
-document.addEventListener('mousedown', (e) => { if(e.target !== document.getElementById('shop') && e.target.classList.contains('object')) isDragging = true; });
-document.addEventListener('mousemove', (e) => {
-    if (isDragging && selectedElement && selectedElement !== document.getElementById('shop')) {
-        const parentRect = document.getElementById('shop').getBoundingClientRect();
-        selectedElement.style.left = (e.clientX - parentRect.left - parseInt(selectedElement.style.width)/2) + 'px';
-        selectedElement.style.top = (e.clientY - parentRect.top - parseInt(selectedElement.style.height)/2) + 'px';
-    }
-});
-document.addEventListener('mouseup', () => isDragging = false);
+        <div class="control-group">
+            <label>回転 (Rotation)</label>
+            <input type="range" id="field-r" min="0" max="360" value="0">
+        </div>
 
-</script>
+        <div class="control-group">
+            <label>不透明度 (Opacity)</label>
+            <input type="range" id="field-o" min="0" max="100" value="100">
+        </div>
+
+        <div class="control-group">
+            <label>背景色 (Color)</label>
+            <input type="color" id="field-c">
+        </div>
+
+        <button class="delete-btn" id="field-del">オブジェクトを削除</button>
+    </aside>
+
+    <script>
+        (function() {
+            let activeElement = null;
+            let isDragging = false;
+            let startPos = { x: 0, y: 0 };
+            let startOffset = { x: 0, y: 0 };
+
+            // UI要素の取得
+            const ui = {
+                w: document.getElementById('field-w'),
+                h: document.getElementById('field-h'),
+                r: document.getElementById('field-r'),
+                o: document.getElementById('field-o'),
+                c: document.getElementById('field-c'),
+                del: document.getElementById('field-del'),
+                name: document.getElementById('display-name')
+            };
+
+            // 1. 選択処理
+            document.addEventListener('mousedown', (e) => {
+                const target = e.target.closest('.editable');
+                if (!target) return;
+
+                if (activeElement) activeElement.classList.remove('selected-target');
+                activeElement = target;
+                activeElement.classList.add('selected-target');
+
+                // パネルに値を同期
+                syncPanel();
+
+                // ドラッグ準備
+                isDragging = true;
+                const rect = activeElement.getBoundingClientRect();
+                startOffset.x = e.clientX - rect.left;
+                startOffset.y = e.clientY - rect.top;
+                
+                e.preventDefault();
+            });
+
+            // 2. ドラッグ移動
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || !activeElement) return;
+
+                const parentRect = activeElement.parentElement.getBoundingClientRect();
+                
+                // 親要素内での相対座標を計算
+                let newX = e.clientX - parentRect.left - startOffset.x;
+                let newY = e.clientY - parentRect.top - startOffset.y;
+
+                activeElement.style.position = 'absolute';
+                activeElement.style.left = `${newX}px`;
+                activeElement.style.top = `${newY}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // 3. パネルから要素への反映
+            function applyChanges() {
+                if (!activeElement) return;
+                activeElement.style.width = `${ui.w.value}px`;
+                activeElement.style.height = `${ui.h.value}px`;
+                activeElement.style.transform = `rotate(${ui.r.value}deg)`;
+                activeElement.style.opacity = ui.o.value / 100;
+                activeElement.style.backgroundColor = ui.c.value;
+            }
+
+            // 要素からパネルへの値同期
+            function syncPanel() {
+                ui.name.innerText = activeElement.id || activeElement.className.split(' ')[0];
+                ui.w.value = activeElement.offsetWidth;
+                ui.h.value = activeElement.offsetHeight;
+                ui.o.value = (window.getComputedStyle(activeElement).opacity || 1) * 100;
+                ui.c.value = rgbToHex(window.getComputedStyle(activeElement).backgroundColor);
+                
+                // 回転角度の取得（簡易版）
+                const style = window.getComputedStyle(activeElement);
+                const matrix = style.transform || style.webkitTransform;
+                if (matrix && matrix !== 'none') {
+                    const values = matrix.split('(')[1].split(')')[0].split(',');
+                    const a = values[0];
+                    const b = values[1];
+                    const angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+                    ui.r.value = angle < 0 ? angle + 360 : angle;
+                } else {
+                    ui.r.value = 0;
+                }
+            }
+
+            // イベント登録
+            [ui.w, ui.h, ui.r, ui.o, ui.c].forEach(input => {
+                input.addEventListener('input', applyChanges);
+            });
+
+            ui.del.addEventListener('click', () => {
+                if (activeElement && confirm('このオブジェクトを削除しますか？')) {
+                    activeElement.remove();
+                    activeElement = null;
+                    ui.name.innerText = "Select an object";
+                }
+            });
+
+            // ヘルパー：RGBをHexに変換
+            function rgbToHex(rgb) {
+                if (!rgb || rgb.indexOf('rgb') === -1) return '#ffffff';
+                const res = rgb.match(/\d+/g);
+                return "#" + res.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+            }
+        })();
+    </script>
 </body>
 </html>
